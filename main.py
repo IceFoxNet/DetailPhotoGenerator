@@ -96,14 +96,15 @@ async def main(start: int, end: int, setup: dict):
                 print(f"Пропущена строка {i}: значение отсутствует.")
                 continue
 
-            if art in history:
+            color = sheet.cell(i, 2).value or "Без цвета"
+            identity = art + '_' + color.replace(' ', '_')
+            if identity in history:
                 continue
-            history.add(art)
+            history.add(identity)
 
             typ = 'Part'
             price = (sheet.cell(i, 9).value or "Не указана") + '₽'
             name = sheet.cell(i, 1).value or "Без названия"
-            color = sheet.cell(i, 2).value or "Без цвета"
             url = sheet.cell(i, 15).value or None
 
             # Проверка на допустимый URL
@@ -315,7 +316,7 @@ async def main(start: int, end: int, setup: dict):
                 yandex.makedirs(f'Авито/{pathlib.Path(final_output_path).stem}')
             except:
                 pass
-            yandex.upload(final_output_path, f'Авито/{pathlib.Path(final_output_path).stem}/{art}', overwrite=True)
+            yandex.upload(final_output_path, f'Авито/{pathlib.Path(final_output_path).stem}/{art}.{final_output_path.split('.')[-1]}', overwrite=True)
             os.remove(final_output_path)
             os.remove(output_path)
             print(art, typ, name, color, price)
