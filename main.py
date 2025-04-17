@@ -90,9 +90,9 @@ async def main(start: int, end: int, setup: dict):
     urls = sheet.range(f'O{start}:O{end}') # Все данные из столбца 15 (фотография)
 
     async with aiohttp.ClientSession(proxy='http://user258866:pe9qf7@166.0.211.142:7576') as session:
-        for i in range(start, end):
+        for i in range(start, end+1):
             if i - 1 < len(arts):
-                art = arts[i - 1]
+                art = arts[i - 1].value
             else:
                 break  # Завершаем цикл, если индекс выходит за пределы
             if not art:
