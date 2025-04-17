@@ -88,27 +88,28 @@ async def main(start: int, end: int, setup: dict):
     prices = sheet.range(f'I{start}:I{end}') # Все данные из столбца 9 (цена)
     names = sheet.range(f'A{start}:A{end}') # Все данные из столбца 1 (название)
     urls = sheet.range(f'O{start}:O{end}') # Все данные из столбца 15 (фотография)
+    colors = sheet.range(f'B{start}:B{end}') # Все данные из столбца 2 (цвет)
 
     async with aiohttp.ClientSession(proxy='http://user258866:pe9qf7@166.0.211.142:7576') as session:
         for i in range(start, end+1):
-            if i - 1 < len(arts):
-                art = arts[i - 1].value
+            if i < len(arts):
+                art = arts[i].value
             else:
                 break  # Завершаем цикл, если индекс выходит за пределы
             if not art:
                 print(f"Пропущена строка {i}: значение отсутствует.")
                 continue
 
-            color = sheet.cell(i, 2).value or "Без цвета"
-            identity = art + '_' + color.replace(' ', '_')
-            if identity in history:
-                continue
-            history.add(identity)
-
             typ = 'Part'
             price = (prices[i].value or "Не указана") + '₽'
             name = names[i].value or "Без названия"
             url = urls[i].value or None
+            color = colors[i].value or "Без цвета"
+            
+            identity = art + '_' + color.replace(' ', '_')
+            if identity in history:
+                continue
+            history.add(identity)
 
             # Проверка на допустимый URL
             if not url or url == '-':
