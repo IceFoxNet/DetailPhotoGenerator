@@ -84,7 +84,10 @@ async def main(start: int, end: int, setup: dict):
     history = set()    
 
     # Получаем все значения из нужных столбцов за один запрос
-    arts = sheet.col_values(3)  # Все данные из столбца 3 (артикул)
+    arts = sheet.range(f'C{start}:C{end}')  # Все данные из столбца 3 (артикул)
+    prices = sheet.range(f'I{start}:I{end}') # Все данные из столбца 9 (цена)
+    names = sheet.range(f'A{start}:A{end}') # Все данные из столбца 1 (название)
+    urls = sheet.range(f'O{start}:O{end}') # Все данные из столбца 15 (фотография)
 
     async with aiohttp.ClientSession(proxy='http://user258866:pe9qf7@166.0.211.142:7576') as session:
         for i in range(start, end):
@@ -103,9 +106,9 @@ async def main(start: int, end: int, setup: dict):
             history.add(identity)
 
             typ = 'Part'
-            price = (sheet.cell(i, 9).value or "Не указана") + '₽'
-            name = sheet.cell(i, 1).value or "Без названия"
-            url = sheet.cell(i, 15).value or None
+            price = (prices[i].value or "Не указана") + '₽'
+            name = names[i].value or "Без названия"
+            url = urls[i].value or None
 
             # Проверка на допустимый URL
             if not url or url == '-':
