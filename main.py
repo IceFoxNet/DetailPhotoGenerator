@@ -81,7 +81,7 @@ async def main(start: int, end: int, setup: dict):
     spreadsheet = google_client.open_by_url(sheet_url)
     sheet = spreadsheet.worksheet('Детали')
     yandex: yadisk.YaDisk = setup.get('YandexDisk')
-    history = set()    
+    history = set()
 
     # Получаем все значения из нужных столбцов за один запрос
     arts = sheet.range(f'C{start}:C{end}')  # Все данные из столбца 3 (артикул)
@@ -317,7 +317,11 @@ async def main(start: int, end: int, setup: dict):
             # Сохраняем финальное изображение
             img1.save(final_output_path)
             try:
-                yandex.makedirs(f'Авито/{pathlib.Path(final_output_path).stem}')
+                yandex.remove(f'Авито/{pathlib.Path(final_output_path).stem}')
+            except:
+                pass
+            try:
+                yandex.mkdir(f'Авито/{pathlib.Path(final_output_path).stem}')
             except:
                 pass
             yandex.upload(final_output_path, f'Авито/{pathlib.Path(final_output_path).stem}/{art}.{final_output_path.split('.')[-1]}', overwrite=True)
@@ -326,4 +330,4 @@ async def main(start: int, end: int, setup: dict):
             print(art, typ, name, color, price)
 
             # Добавляем задержку между запросами
-            time.sleep(5)  # Задержка на 1 секунду между запросами
+            time.sleep(3)  # Задержка на 1 секунду между запросами
