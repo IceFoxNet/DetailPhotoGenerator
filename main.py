@@ -1,12 +1,13 @@
 import os
 
+import gspread.spreadsheet
+
 while True:
     try:
         from PIL import Image, ImageFont, ImageDraw
         import gspread, yadisk
         from rembg import remove
         import time, aiohttp, pathlib
-        from configparser import ConfigParser
     except ImportError as e:
         package = e.msg.split()[-1][1:-1]
         os.system(f'python -m pip install {package}')
@@ -15,9 +16,6 @@ while True:
 
 workspace = pathlib.Path(__file__).parent.resolve()
 downloaded_image_buffer = os.path.join(workspace, 'download_buffer.png')
-config = ConfigParser()
-config.read(os.path.join(workspace, 'config.ini'))
-sheet_url = config.get('parser', 'url')
 
 # Загрузка шрифтов
 try:
@@ -76,32 +74,25 @@ async def main(start: int, end: int, setup: dict):
 
     if start < 3: start = 3
 
-    creds = setup.get('GoogleCredentials')
-    google_client = gspread.authorize(creds)
-    spreadsheet = google_client.open_by_url(sheet_url)
+    spreadsheet: gspread.spreadsheet.Spreadsheet = setup.get('DetailsSheet')
     sheet = spreadsheet.worksheet('Детали')
     yandex: yadisk.YaDisk = setup.get('YandexDisk')
     history = set()
 
     # Получаем все значения из нужных столбцов за один запрос
     arts = sheet.range(f'C{start}:C{end}')  # Все данные из столбца 3 (артикул)
-    prices = sheet.range(f'I{start}:I{end}') # Все данные из столбца 9 (цена)
     names = sheet.range(f'A{start}:A{end}') # Все данные из столбца 1 (название)
     urls = sheet.range(f'O{start}:O{end}') # Все данные из столбца 15 (фотография)
     colors = sheet.range(f'B{start}:B{end}') # Все данные из столбца 2 (цвет)
 
     async with aiohttp.ClientSession(proxy='http://user258866:pe9qf7@166.0.211.142:7576') as session:
-        for i in range(start, end+1):
-            if i < len(arts):
-                art = arts[i].value
-            else:
-                break  # Завершаем цикл, если индекс выходит за пределы
+        for i in range(len(arts)):
+            art = arts[i].value
             if not art:
                 print(f"Пропущена строка {i}: значение отсутствует.")
                 continue
 
             typ = 'Part'
-            price = (prices[i].value or "Не указана") + '₽'
             name = names[i].value or "Без названия"
             url = urls[i].value or None
             color = colors[i].value or "Без цвета"
@@ -142,16 +133,14 @@ async def main(start: int, end: int, setup: dict):
 
             # Основной блок обработки
             try:
-                with open(file_path, 'rb') as f:
-                    if is_white_background(file_path):
-                        print(f"Фон изображения {art} белый. Пропускаем удаление фона.")
-                        output_path = file_path  # Если фон белый, просто используем исходное изображение
-                    else:
-                        output_data = remove(f.read())  # Если фон не белый, удаляем фон
-                        output_path = file_path.replace('.jpg', '_no_bg.png')
-                        os.remove(file_path)
-                        with open(output_path, 'wb') as out_file:
-                            out_file.write(output_data)
+                if is_white_background(file_path):
+                    print(f"Фон изображения {art} белый. Пропускаем удаление фона.")
+                    output_path = file_path  # Если фон белый, просто используем исходное изображение
+                else:
+                    output_data = remove(Image.open(file_path))  # Если фон не белый, удаляем фон
+                    output_path = file_path.replace('.jpg', '_no_bg.png')
+                    os.remove(file_path)
+                    output_data.save(output_path)
             except Exception as e:
                 print(f"Ошибка при удалении фона для изображения {art}: {e}")
                 continue
@@ -250,9 +239,6 @@ async def main(start: int, end: int, setup: dict):
             # Текст "typ"
             drawer.text((602, 931.5), typ, font=main_font_42_medium, fill='black')
 
-            # Текст с ценой
-            drawer.text((560, 756), price, font=main_font_82_bold, fill='black')
-
             # Функция для разбивки текста на строки
             def wrap_text_to_box(text, font, max_width):
                 words = text.split(' ')
@@ -327,7 +313,12 @@ async def main(start: int, end: int, setup: dict):
             yandex.upload(final_output_path, f'Авито/{pathlib.Path(final_output_path).stem}/{art}.{final_output_path.split('.')[-1]}', overwrite=True)
             os.remove(final_output_path)
             os.remove(output_path)
-            print(art, typ, name, color, price)
+            print(art, typ, name, color)
 
             # Добавляем задержку между запросами
             time.sleep(3)  # Задержка на 1 секунду между запросами
+
+if __name__ == '__main__':
+    from Setup.setup import setup
+    import asyncio
+    asyncio.run(main(3, 10_000, setup))
