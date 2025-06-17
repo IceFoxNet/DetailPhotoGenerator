@@ -8,6 +8,7 @@ while True:
         import gspread, yadisk
         from rembg import remove
         import time, aiohttp, pathlib
+        from database import DBConnect
     except ImportError as e:
         package = e.msg.split()[-1][1:-1]
         os.system(f'python -m pip install {package}')
@@ -77,7 +78,7 @@ async def main(start: int, end: int, setup: dict):
     spreadsheet: gspread.spreadsheet.Spreadsheet = setup.get('DetailsSheet')
     sheet = spreadsheet.worksheet('Детали')
     yandex: yadisk.YaDisk = setup.get('YandexDisk')
-    history = set()
+    dbconn = DBConnect(setup.get('AppInfo'))
 
     # Получаем все значения из нужных столбцов за один запрос
     arts = sheet.range(f'C{start}:C{end}')  # Все данные из столбца 3 (артикул)
@@ -98,9 +99,9 @@ async def main(start: int, end: int, setup: dict):
             color = colors[i].value or "Без цвета"
             
             identity = art + '_' + color.replace(' ', '_')
-            if identity in history:
+            if dbconn.is_actual_media_generated(identity):
+                print(f'Пропущен артикул {identity}: актуальные карточки деталей уже сгенерированы')
                 continue
-            history.add(identity)
 
             # Проверка на допустимый URL
             if not url or url == '-':
@@ -310,15 +311,19 @@ async def main(start: int, end: int, setup: dict):
                 yandex.mkdir(f'Авито/{pathlib.Path(final_output_path).stem}')
             except:
                 pass
-            yandex.upload(final_output_path, f'Авито/{pathlib.Path(final_output_path).stem}/{art}.{final_output_path.split('.')[-1]}', overwrite=True)
+            disk_path = f'Авито/{pathlib.Path(final_output_path).stem}/{art}.{final_output_path.split('.')[-1]}'
+            yandex.upload(final_output_path, disk_path, overwrite=True)
+            yandex.publish(disk_path)
+            media_url = yandex.get_meta(disk_path).public_url
+            if media_url is not None:
+                media_url = media_url.replace('yadi.sk', 'disk.yandex.ru')
+            dbconn.delete_media(art, disk_path)
+            dbconn.create_media(media_url, disk_path, identity, f'ID-P-{art}-0-0', f'Карточка с деталью, фотография BrickLink, {art}, {color} {name}')
             os.remove(final_output_path)
             os.remove(output_path)
-            print(art, typ, name, color)
-
-            # Добавляем задержку между запросами
-            time.sleep(3)  # Задержка на 1 секунду между запросами
+    dbconn.close()
 
 if __name__ == '__main__':
     from Setup.setup import setup
     import asyncio
-    asyncio.run(main(3, 10_000, setup))
+    asyncio.run(main(3, 23, setup))
