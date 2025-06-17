@@ -1,3 +1,4 @@
+from scope_db import DBConnect
 import os
 
 import gspread.spreadsheet
@@ -8,7 +9,6 @@ while True:
         import gspread, yadisk
         from rembg import remove
         import time, aiohttp, pathlib
-        from database import DBConnect
     except ImportError as e:
         package = e.msg.split()[-1][1:-1]
         os.system(f'python -m pip install {package}')
